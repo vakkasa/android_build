@@ -14,10 +14,15 @@ endef
 
 
 CLANG_CONFIG_EXTRA_CFLAGS := \
-  -D__compiler_offsetof=__builtin_offsetof \
+  -O3 -Qunused-arguments -Wno-unknown-warning-option -D__compiler_offsetof=__builtin_offsetof \
+  -fstrict-aliasing
 
 CLANG_CONFIG_UNKNOWN_CFLAGS := \
-  -funswitch-loops
+  -funswitch-loops \
+  -fno-canonical-system-headers \
+  -fno-toplevel-reorder \
+  -fuse-linker-plugin \
+  -Wstrict-aliasing=3
 
 ifeq ($(TARGET_ARCH),arm)
   RS_TRIPLE := armv7-none-linux-gnueabi
@@ -39,7 +44,8 @@ ifeq ($(TARGET_ARCH),arm)
     -fno-builtin-sin \
     -fno-strict-volatile-bitfields \
     -fno-align-jumps \
-    -Wa,--noexecstack
+    -Wa,--noexecstack \
+    -fira-hoist-pressure
 endif
 ifeq ($(TARGET_ARCH),mips)
   RS_TRIPLE := mipsel-unknown-linux
@@ -97,9 +103,11 @@ TARGET_thumb_CLANG_CFLAGS += $(filter-out $(CLANG_CONFIG_UNKNOWN_CFLAGS),$(TARGE
 $(call clang-flags-subst,-march=armv5te,-march=armv5t)
 $(call clang-flags-subst,-march=armv5e,-march=armv5)
 
-# clang does not support -Wno-psabi and -Wno-unused-but-set-variable
+# clang does not support -Wno-psabi, -Wno-unused-but-set-variable, and
+# -Wno-unused-but-set-parameter
 $(call clang-flags-subst,-Wno-psabi,)
 $(call clang-flags-subst,-Wno-unused-but-set-variable,)
+$(call clang-flags-subst,-Wno-unused-but-set-parameter,)
 
 # clang does not support -mcpu=cortex-a15 yet - fall back to armv7-a for now
 $(call clang-flags-subst,-mcpu=cortex-a15,-march=armv7-a)

@@ -35,7 +35,7 @@ TARGET_ARCH_VARIANT := armv5te
 endif
 
 ifeq ($(strip $(TARGET_GCC_VERSION_EXP)),)
-TARGET_GCC_VERSION := 4.7
+TARGET_GCC_VERSION := 4.9
 else
 TARGET_GCC_VERSION := $(TARGET_GCC_VERSION_EXP)
 endif
@@ -68,16 +68,59 @@ endif
 
 TARGET_NO_UNDEFINED_LDFLAGS := -Wl,--no-undefined
 
-TARGET_arm_CFLAGS :=    -O2 \
-                        -fomit-frame-pointer \
-                        -fstrict-aliasing    \
-                        -funswitch-loops
+TARGET_arm_CFLAGS :=    -O3 \
+			-DNDEBUG \
+			-fstrict-aliasing \
+			-Wstrict-aliasing=3 \
+			-Werror=strict-aliasing \
+			-funsafe-loop-optimizations \
+			-fivopts \
+			-ftree-loop-im \
+			-ftree-loop-ivcanon \
+			-ffunction-sections \
+			-fdata-sections \
+			-funswitch-loops \
+			-frename-registers \
+			-fomit-frame-pointer \
+			-fgcse-sm \
+			-fgcse-las \
+			-fweb \
+			-ftracer \
+			-Wno-error=unused-parameter \
+			-Wno-error=unused-but-set-variable \
+			-Wno-error=maybe-uninitialized
 
 # Modules can choose to compile some source as thumb.
 TARGET_thumb_CFLAGS :=  -mthumb \
-                        -Os \
-                        -fomit-frame-pointer \
-                        -fno-strict-aliasing
+			-O3 \
+			-DNDEBUG \
+			-funsafe-loop-optimizations \
+			-fivopts \
+			-ftree-loop-im \
+			-ftree-loop-ivcanon \
+			-ffunction-sections \
+			-fdata-sections \
+			-funswitch-loops \
+			-frename-registers \
+			-frerun-cse-after-loop \
+			-fomit-frame-pointer \
+			-fgcse-sm \
+			-fgcse-las \
+			-fweb \
+			-ftracer \
+			-Wno-error=unused-parameter \
+			-Wno-error=unused-but-set-variable \
+			-Wno-error=maybe-uninitialized \
+			-fstrict-aliasing \
+			-Wstrict-aliasing=3 \
+			-Werror=strict-aliasing
+
+# Turn off strict-aliasing if we're building an AOSP variant without the
+# patchset...
+ifeq ($(DEBUG_NO_STRICT_ALIASING),yes)
+TARGET_arm_CFLAGS += -fno-strict-aliasing -Wno-error=strict-aliasing
+TARGET_thumb_CFLAGS += -fno-strict-aliasing -Wno-error=strict-aliasing
+endif
 
 # Set FORCE_ARM_DEBUGGING to "true" in your buildspec.mk
 # or in your environment to force a full arm build, even for
@@ -89,8 +132,8 @@ TARGET_thumb_CFLAGS :=  -mthumb \
 # with -mlong-calls.  When built at -O0, those libraries are
 # too big for a thumb "BL <label>" to go from one end to the other.
 ifeq ($(FORCE_ARM_DEBUGGING),true)
-  TARGET_arm_CFLAGS += -fno-omit-frame-pointer -fno-strict-aliasing
-  TARGET_thumb_CFLAGS += -marm -fno-omit-frame-pointer
+  TARGET_arm_CFLAGS += -fno-omit-frame-pointer -fstrict-aliasing
+  TARGET_thumb_CFLAGS += -marm -fno-omit-frame-pointer -fstrict-aliasing
 endif
 
 ifeq ($(TARGET_DISABLE_ARM_PIE),true)
@@ -108,11 +151,14 @@ TARGET_GLOBAL_CFLAGS += \
 			-ffunction-sections \
 			-fdata-sections \
 			-funwind-tables \
+			-fstrict-aliasing \
 			-fstack-protector \
 			-Wa,--noexecstack \
 			-Werror=format-security \
 			-D_FORTIFY_SOURCE=2 \
 			-fno-short-enums \
+			-no-canonical-prefixes \
+			-fno-canonical-system-headers \
 			$(arch_variant_cflags) \
 			-include $(android_config_h) \
 			-I $(dir $(android_config_h))
@@ -121,9 +167,12 @@ TARGET_GLOBAL_CFLAGS += \
 # We cannot turn it off blindly since the option is not available
 # in gcc-4.4.x.  We also want to disable sincos optimization globally
 # by turning off the builtin sin function.
-ifneq ($(filter 4.6 4.6.% 4.7 4.7.%, $(TARGET_GCC_VERSION)),)
+ifneq ($(filter 4.6 4.6.% 4.7 4.7.% 4.8 4.8.% 4.9 4.9.% 4.10 4.10.%, $(TARGET_GCC_VERSION)),)
 TARGET_GLOBAL_CFLAGS += -Wno-unused-but-set-variable -fno-builtin-sin \
 			-fno-strict-volatile-bitfields
+	gcc_variant_ldflags := -Wl,--enable-new-dtags
+else
+	gcc_variant_ldflags := -Wl,--icf=safe
 endif
 
 # This is to avoid the dreaded warning compiler message:
@@ -142,21 +191,36 @@ TARGET_GLOBAL_LDFLAGS += \
 			-Wl,-z,now \
 			-Wl,--warn-shared-textrel \
 			-Wl,--fatal-warnings \
-			-Wl,--icf=safe \
-			$(arch_variant_ldflags)
+			$(arch_variant_ldflags) $(gcc_variant_ldflags)
 
 TARGET_GLOBAL_CFLAGS += -mthumb-interwork
 
+TARGET_GLOBAL_CPPFLAGS += -O3 -DNDEBUG -funsafe-loop-optimizations -fivopts -ftree-loop-im -ftree-loop-ivcanon -ffunction-sections -fdata-sections -funswitch-loops -frename-registers -fomit-frame-pointer -fgcse-sm -fgcse-las -fweb -ftracer -Wno-error=unused-parameter -Wno-error=unused-but-set-variable -Wno-error=maybe-uninitialized -Wstrict-aliasing=3
 TARGET_GLOBAL_CPPFLAGS += -fvisibility-inlines-hidden
 
 # More flags/options can be added here
-TARGET_RELEASE_CFLAGS := \
+TARGET_RELEASE_CFLAGS += \
+			-O3 \
 			-DNDEBUG \
-			-g \
-			-Wstrict-aliasing=2 \
-			-fgcse-after-reload \
-			-frerun-cse-after-loop \
-			-frename-registers
+			-fstrict-aliasing \
+			-Wstrict-aliasing=3 \
+			-Werror=strict-aliasing \
+			-funsafe-loop-optimizations \
+			-fivopts \
+			-ftree-loop-im \
+			-ftree-loop-ivcanon \
+			-ffunction-sections \
+			-fdata-sections \
+			-funswitch-loops \
+			-frename-registers \
+			-fomit-frame-pointer \
+			-fgcse-sm \
+			-fgcse-las \
+			-fweb \
+			-ftracer \
+			-Wno-error=unused-parameter \
+			-Wno-error=unused-but-set-variable \
+			-Wno-error=maybe-uninitialized
 
 libc_root := bionic/libc
 libm_root := bionic/libm
@@ -172,6 +236,15 @@ ifneq ($(wildcard $(TARGET_CC)),)
 TARGET_LIBGCC := $(shell $(TARGET_CC) $(TARGET_GLOBAL_CFLAGS) -print-libgcc-file-name)
 target_libgcov := $(shell $(TARGET_CC) $(TARGET_GLOBAL_CFLAGS) \
         -print-file-name=libgcov.a)
+endif
+
+# Define LTO (Link-Time Optimization) options.
+
+TARGET_LTO_CFLAGS :=
+TARGET_LTO_LDFLAGS :=
+ifneq ($(DEBUG_NO_LTO),yes)
+TARGET_LTO_CFLAGS := -flto -fno-toplevel-reorder -fuse-linker-plugin
+TARGET_LTO_LDFLAGS := -Wl,-flto
 endif
 
 # Define FDO (Feedback Directed Optimization) options.

@@ -46,9 +46,14 @@ $(combo_target)HAVE_STRLCPY := 0
 $(combo_target)HAVE_STRLCAT := 0
 $(combo_target)HAVE_KERNEL_MODULES := 0
 
-$(combo_target)GLOBAL_CFLAGS := -fno-exceptions -Wno-multichar
-$(combo_target)RELEASE_CFLAGS := -O2 -g -fno-strict-aliasing
-$(combo_target)GLOBAL_LDFLAGS :=
+$(combo_target)GLOBAL_CFLAGS := -O3 -DNDEBUG -fstrict-aliasing -Wstrict-aliasing=3 -Werror=strict-aliasing -funsafe-loop-optimizations -fivopts -ftree-loop-im -ftree-loop-ivcanon -ffunction-sections -fdata-sections -funswitch-loops -frename-registers -frerun-cse-after-loop -fomit-frame-pointer -fgcse-sm -fgcse-las -fweb -ftracer -Wno-error=unused-parameter -Wno-error=unused-but-set-variable -Wno-error=maybe-uninitialized -Wno-error=return-type -fno-exceptions -Wno-multichar
+$(combo_target)RELEASE_CFLAGS := -O3 -DNDEBUG -fstrict-aliasing -Wstrict-aliasing=3 -funsafe-loop-optimizations -fivopts -ftree-loop-im -ftree-loop-ivcanon -ffunction-sections -fdata-sections -funswitch-loops -frename-registers -frerun-cse-after-loop -fomit-frame-pointer -fgcse-sm -fgcse-las -fweb -ftracer -Wno-error=unused-parameter -Wno-error=unused-but-set-variable -Wno-error=maybe-uninitialized -Wno-error=return-type
+ifneq ($(combo_target),HOST_)
+$(combo_target)RELEASE_CFLAGS += -Wstrict-aliasing=3 -Werror=strict-aliasing
+else
+$(combo_target)RELEASE_CFLAGS += -Wno-error=strict-aliasing -Wno-strict-aliasing -fno-strict-aliasing
+endif
+$(combo_target)GLOBAL_LDFLAGS := -Wl,-O2 -Wl,--as-needed -Wl,--relax -Wl,--sort-common -s -Wl,--gc-sections
 $(combo_target)GLOBAL_ARFLAGS := crsP
 
 $(combo_target)EXECUTABLE_SUFFIX :=
